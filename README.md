@@ -8,7 +8,7 @@ was my gym: VivaGym only lets you in by scanning a QR code from their Android ap
 So this repo is the story of turning a cheap dumbphone into something I can actually live
 with: running my own apps on it, building a toolchain for it, writing a web browser that
 does real HTTPS on a 2G phone, and finally reverse-engineering my gym's app so the Nokia
-can show my check-in QR at the turnstile.
+can show my check-in QR at the turnstile. (Spoiler: it works.)
 
 <p align="center">
   <img src="docs/vivagym-mockup.png" width="240" alt="VivaGym check-in app on the Nokia 216 (mock-up with a fake code)">
@@ -201,6 +201,9 @@ I first wrote the whole flow as a Python proof of concept
   `tools/host_vg.c` runs the app's real logic on the PC against it: fresh login, expired
   token → refresh, bad refresh → password login, wrong password, chunked responses, and
   saving/loading the settings file.
+
+**And it works.** I tested it on the real phone with my real membership: the Nokia logs in,
+shows my check-in QR, and the gym's scanner accepts it.
 
 What's not in this repo: my email, password, member id and real QR codes, and the app's
 OAuth client id/secret. Those live in `src/secrets.h`, which is gitignored. If you have a
