@@ -1,0 +1,11 @@
+{
+    "name": "Nokia Web",
+    "vendor": "nokia216-hacks",
+    "app_name_multilang": ["Nokia Web", "Nokia Web", "Nokia Web"],
+    "description": "Text web browser with HTTPS",
+    "version": 1,
+
+    "required_ram": 1200,
+    "imsi": "1234567890",
+    "run_in_background": 0
+}

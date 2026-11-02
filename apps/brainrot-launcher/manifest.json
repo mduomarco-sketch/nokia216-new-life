@@ -1,0 +1,11 @@
+{
+    "name": "Brainrot Launcher",
+    "vendor": "nokia216-hacks",
+    "app_name_multilang": ["Brainrot Launcher", "Brainrot Launcher", "Brainrot Launcher"],
+    "description": "App grid with fan-art character icons",
+    "version": 1,
+
+    "required_ram": 256,
+    "imsi": "1234567890",
+    "run_in_background": 0
+}

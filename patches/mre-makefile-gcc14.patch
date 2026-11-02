@@ -1,0 +1,26 @@
+diff --git a/Makefile b/Makefile
+index 0122207..95d7bfc 100755
+--- a/Makefile
++++ b/Makefile
+@@ -33,7 +33,7 @@ build/%.o: src/%.cpp
+ 	$(GPP) $(GPP_PARAM) -c $< -o $@
+ 
+ # 2. Link
+-build/$(APP_FILE_NAME).axf: $(patsubst src/%.c,build/%.o,$(wildcard src/*.c))
++build/$(APP_FILE_NAME).axf: $(patsubst src/%.c,build/%.o,$(wildcard src/*.c)) $(patsubst src/%.cpp,build/%.o,$(wildcard src/*.cpp))
+ 	$(GCC) -o $@ $^ $(LINK_LIB) $(LINK_PARAM)
+ 
+ # 3. Add resources
+diff --git a/src/c_fix.c b/src/c_fix.c
+index 4996389..6e0bbba 100755
+--- a/src/c_fix.c
++++ b/src/c_fix.c
+@@ -11,7 +11,7 @@ extern volatile void* return_address;
+ extern volatile unsigned long* return_sp;
+ 
+ void _sbrk(){}
+-void _write(int fd, const void* buffer, unsigned int count){
++int _write(int fd, const void* buffer, unsigned int count){
+ 	LOG_M((const char*)buffer);
+ 	return count;
+ }

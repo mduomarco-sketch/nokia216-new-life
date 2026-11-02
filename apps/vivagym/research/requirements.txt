@@ -1,0 +1,5 @@
+requests>=2.28
+qrcode>=7.4
+# Optional, only for verifying/decoding existing QR images:
+#   pyzbar>=0.1.9
+#   pillow>=9

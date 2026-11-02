@@ -1,0 +1,16 @@
+# build output
+build/
+*.o
+*.axf
+*.vxp
+*.exe
+
+# personal: account + app keys (copy secrets.example.h)
+secrets.h
+
+# host tests
+fs_*
+*.seed
+__pycache__/
+.vscode/
+.DS_Store

@@ -1,0 +1,11 @@
+{
+    "name": "Snake",
+    "vendor": "nokia216-hacks",
+    "app_name_multilang": ["Snake", "Snake", "Snake"],
+    "description": "Classic Snake for the Nokia 216",
+    "version": 1,
+
+    "required_ram": 128,
+    "imsi": "1234567890",
+    "run_in_background": 0
+}

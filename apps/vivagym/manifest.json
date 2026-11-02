@@ -1,0 +1,11 @@
+{
+    "name": "VivaGym",
+    "vendor": "nokia216-hacks",
+    "app_name_multilang": ["VivaGym", "VivaGym", "VivaGym"],
+    "description": "VivaGym check-in QR",
+    "version": 1,
+
+    "required_ram": 1200,
+    "imsi": "1234567890",
+    "run_in_background": 0
+}
