@@ -1,0 +1,11 @@
+{
+    "name": "Horario UPV",
+    "vendor": "nokia216-hacks",
+    "app_name_multilang": ["Horario UPV", "Horario UPV", "Horario UPV"],
+    "description": "UPV class timetable from your iCal feed",
+    "version": 1,
+
+    "required_ram": 4096,
+    "imsi": "1234567890",
+    "run_in_background": 0
+}

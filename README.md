@@ -26,8 +26,9 @@ can show my check-in QR at the turnstile. (Spoiler: it works.)
 5. [Nokia Web: HTTPS on a 2G phone](#5-nokia-web-https-on-a-2g-phone)
 6. [Brainrot Launcher](#6-brainrot-launcher)
 7. [VivaGym: my gym QR without a smartphone](#7-vivagym-my-gym-qr-without-a-smartphone)
-8. [What I learned](#8-what-i-learned)
-9. [Repo layout and how to build](#9-repo-layout-and-how-to-build)
+8. [Horario UPV: my class timetable, with AI](#8-horario-upv-my-class-timetable-with-ai)
+9. [What I learned](#9-what-i-learned)
+10. [Repo layout and how to build](#10-repo-layout-and-how-to-build)
 
 ---
 
@@ -214,7 +215,27 @@ decompiled copy of the app.
 > official app does. It doesn't forge codes or get around anything. Not affiliated with
 > VivaGym, MyVitale or Exerp.
 
-## 8. What I learned
+## 8. Horario UPV: my class timetable, with AI
+
+Same idea as VivaGym, one step further: see my **UPV university class timetable** on the
+phone. The official app (miUPV) is a Flutter app whose login uses OAuth2 client credentials
+the app fetches from the server at runtime — a dead end for a standalone client
+([`apps/upv/research/FINDINGS.md`](apps/upv/research/FINDINGS.md)). The way in turned out to be
+much simpler: UPV publishes each student's timetable as a **personal iCal feed**
+(`https://www.upv.es/ical/<token>`). One HTTPS GET, parse `VEVENT`s, no app login.
+
+[`apps/upv`](apps/upv/) reuses Nokia Web's TLS/networking. What's new:
+- a **streaming iCal parser** (`upv_ical.c`) so the ~340 KB / two-year feed never sits in RAM;
+- **cache to the SD card** (write-to-temp, replace-on-success) so it opens offline and a failed
+  2G refresh can't wipe the schedule;
+- **UTC → Europe/Madrid** time conversion (CET/CEST);
+- an optional **"Explicar con IA"**: press `#` and the day's classes go to an OpenAI-compatible
+  API (DeepSeek by default, configurable in `secrets.h`) for a plain-Spanish summary — the AI
+  is an addition, the iCal feed stays authoritative.
+
+Full write-up: [`apps/upv/MANUAL-Horario-UPV.txt`](apps/upv/MANUAL-Horario-UPV.txt).
+
+## 9. What I learned
 
 - **Check your assumptions about the platform first.** I almost started a Java ME app.
   Knowing the phone runs MRE (native ARM, `.vxp`) changed the whole plan.
@@ -234,7 +255,7 @@ decompiled copy of the app.
 - **Keep personal data out of the code**: credentials in a gitignored header, an offline
   signing tool instead of uploading my IMSI, and placeholders in the published notes.
 
-## 9. Repo layout and how to build
+## 10. Repo layout and how to build
 
 ```
 apps/

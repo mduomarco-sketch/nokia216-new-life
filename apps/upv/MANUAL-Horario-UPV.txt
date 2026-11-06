@@ -1,0 +1,235 @@
+==========================================================================================
+ HORARIO UPV ON A NOKIA 216
+ How a 2016 feature phone was taught to show a university class timetable - and to
+ explain it in plain words with an AI - straight from the phone, over 2G.
+==========================================================================================
+
+ Public code : github.com/mduomarco-sketch/nokia216-new-life  (apps/upv)
+ Written for : a technically minded reader who is not a professional programmer.
+ Part of     : the "Nokia 216 New Life" project (see the repo's main README and the
+               Nokia Web / VivaGym write-ups, whose networking this app reuses).
+
+
+------------------------------------------------------------------------------------------
+1  WHAT THIS IS, AND WHY
+------------------------------------------------------------------------------------------
+
+ The goal: see my UPV (Universitat Politecnica de Valencia) class timetable on a
+ Nokia 216 - a 2016 Series 30+ feature phone - without needing a modern smartphone.
+
+ The university's official app, "miUPV", is an Android/iOS app. The Nokia cannot run
+ it: it is not Android. The Nokia runs small programs called MRE apps (.vxp files),
+ the same kind as the other apps in this repo. So the task was to rebuild, in a tiny
+ C program, just the one thing I wanted: download my timetable and show it.
+
+ Two features, in order of importance:
+   1. The TIMETABLE itself - the authoritative day-by-day schedule, exactly as the
+      university publishes it. This is the whole point.
+   2. An optional AI "explain my day" - press a key and a language model summarises
+      the day in plain Spanish (gaps between classes, room changes, a reminder to
+      eat). The AI is an ADDITION, never a replacement: the real data always comes
+      from the university, and if the AI fails the timetable is untouched.
+
+
+------------------------------------------------------------------------------------------
+2  THE PHONE (one-minute recap)
+------------------------------------------------------------------------------------------
+
+ Model ....... Nokia 216 (RM-1187), 2016, Series 30+, MediaTek MT6260 (one ARM9 core).
+ Network ..... 2G only (GPRS/EDGE): tens of kilobits per second. Slow.
+ Screen ...... 240 x 320 pixels, 16-bit colour.
+ RAM ......... very little for an app (hundreds of KB to a couple of MB).
+ Apps ........ MRE ".vxp" programs. A .vxp only runs if it is SIGNED with the IMSI
+               (the id number) of the SIM card in the phone. See tools/vxpsign.py.
+
+ Consequence of "2G + little RAM": we cannot be wasteful. The timetable feed is about
+ 340 KB and covers two academic years; the phone must handle it without ever holding
+ it all in memory, and without re-downloading it every time you flip a day.
+
+
+------------------------------------------------------------------------------------------
+3  THE DETOUR THAT TAUGHT THE REAL ANSWER
+------------------------------------------------------------------------------------------
+
+ The obvious plan was: reverse-engineer the miUPV app, find how it logs in and asks
+ for the timetable, and reproduce that in C. (This is how the VivaGym app in this
+ repo was built.)
+
+ miUPV turned out to be a FLUTTER app: its logic is compiled into a big binary blob
+ (libapp.so), not readable Java. But it ships a plain-text config file listing every
+ server endpoint. From that, the timetable endpoint was clear - an authenticated
+ request to www.upv.es with a Bearer token.
+
+ The catch: to get that token you must log in through an OAuth2 flow, and the app's
+ own client_id / client_secret (the APP's identity, separate from your password) are
+ NOT stored in the app - the app downloads them from the server at startup. Without
+ them, a standalone client cannot log in. That was a dead end. (Full story in
+ research/FINDINGS.md.)
+
+ The breakthrough was realising I didn't need the app's login at all. UPV, like many
+ universities, publishes each student's timetable as a personal iCal CALENDAR FEED -
+ the same kind of link you "subscribe to" in Google Calendar or Apple Calendar:
+
+     https://www.upv.es/ical/<a long secret token>
+
+ That single URL, with its token, IS the credential. No OAuth, no app, no password in
+ the program. You get it once from the UPV intranet / PoliformaT ("export / subscribe
+ to calendar"). The phone just downloads that URL and reads it.
+
+ LESSON: before reverse-engineering an app, check whether the data already has a
+ simpler public door. A calendar "subscribe" link was that door.
+
+
+------------------------------------------------------------------------------------------
+4  WHAT AN iCAL FEED LOOKS LIKE
+------------------------------------------------------------------------------------------
+
+ It is just text. One block per class:
+
+     BEGIN:VEVENT
+     DTSTART:20261105T093000Z          <- start, in UTC (the "Z")
+     DTEND:20261105T113000Z            <- end
+     SUMMARY:Maquinas y Mecanismos     <- subject
+     LOCATION:Aula N25 (Edificio 7E)   <- classroom
+     END:VEVENT
+
+ Two details matter for the phone:
+   - Times are in UTC. UPV is Europe/Madrid: UTC+1 in winter, UTC+2 in summer (EU
+     daylight saving: last Sunday of March to last Sunday of October). The app adds
+     that offset so a 09:30 class shows as 10:30. (upv_ical.c, is_summer_time()).
+   - The feed is huge (hundreds of events). The phone keeps only what it needs.
+
+
+------------------------------------------------------------------------------------------
+5  HOW THE APP WORKS (apps/upv/src)
+------------------------------------------------------------------------------------------
+
+ Three ideas carry the whole thing:
+
+ (a) STREAMING PARSE - never hold the whole feed in memory.
+     As bytes arrive from the network, upv_ical.c feeds them through a small
+     line-by-line state machine (ical_feed_bytes). It assembles one calendar line at
+     a time, recognises BEGIN:VEVENT / fields / END:VEVENT, and emits finished events.
+     Memory use is constant no matter how big the feed is. The same code is testable
+     on a PC (tools/host_ical.c), which is how it was verified before touching the
+     phone.
+
+ (b) CACHE TO THE SD CARD - download once, browse offline.
+     The raw feed is saved to the memory card (upv.ics). On launch the app reads that
+     cache instantly (so it opens with no signal) and only downloads again when you
+     press OK. Downloading 340 KB over 2G takes a while; doing it once is the point.
+
+     IMPORTANT SAFETY: the download writes to a TEMP file and only replaces the good
+     cache if the download actually succeeded (more than ~1 KB). An early version
+     truncated the cache first and then wrote the new data - so a failed/empty refresh
+     left a 0-byte cache and every day looked empty. The temp-file-then-replace fix
+     means a bad refresh can never destroy your offline copy.
+
+ (c) THE DAY VIEW - one day at a time.
+     upv.c draws a header (weekday + date), lists that day's classes (time, subject,
+     room), and lets you move between days. Navigation is instant because all events
+     are already in memory from the one parse.
+
+     Keys:
+       Left / Right (or 4 / 6) : previous / next day
+       0                       : jump to today
+       Up / Down               : scroll a busy day
+       OK / 5                  : refresh from the server
+       #  or  *                : explain this day with the AI (section 6)
+       LSK (Menu)              : Actualizar / Hoy / Explicar con IA / Acerca de / Salir
+       RSK                     : exit (or back, from a sub-screen)
+
+ The networking (HTTPS over TLS 1.2 using BearSSL, the 2G data-account setup, DNS,
+ and the cooperative "coroutine" that keeps the screen responsive during a slow
+ download) is reused almost unchanged from the Nokia Web and VivaGym apps in this
+ repo. Building an HTTPS client for this phone was the hard part; it was done once,
+ and every new "fetch something from the internet" app inherits it.
+
+ A NOTE ON THE CLOCK: the app shows the day the PHONE thinks it is "today". A feature
+ phone that loses power can reset its clock to 2016; then "today" has no classes
+ because the feed is 2025-2027. If the day view looks empty, check Ajustes -> Hora y
+ fecha on the phone. (You can always navigate with Left/Right regardless.)
+
+
+------------------------------------------------------------------------------------------
+6  THE AI LAYER ("EXPLICAR CON IA")
+------------------------------------------------------------------------------------------
+
+ Press # (or *), or pick "Explicar con IA" from the menu. The app takes the classes
+ of the day you are viewing - a few lines of text it already parsed - and sends them
+ to an OpenAI-COMPATIBLE chat API. It shows the reply: a short, friendly Spanish
+ summary. Typing on a numeric keypad is painful, so "press one key, get a paragraph"
+ is the right shape for this phone.
+
+ - Provider is configurable in src/secrets.h (OPENAI_HOST / OPENAI_PATH / OPENAI_MODEL
+   / OPENAI_API_KEY). The default targets DeepSeek (api.deepseek.com). Any
+   OpenAI-compatible endpoint works by changing those four defines - the C client is
+   a generic /chat/completions client; the provider is just configuration.
+ - The phone talks to the API DIRECTLY over TLS 1.2 (verified reachable; the API's
+   certificate chains to a root already bundled in the app). No relay server needed.
+ - The data sent is only the day's class list; the authoritative timetable is always
+   the iCal feed. If the AI call fails, you see an error on the AI screen and the
+   timetable is unaffected.
+
+ WARNING: the API key is compiled into the .vxp, which sits on the SD card. Anyone
+ with the card could read it. Use a key with a low spending cap. Leaving the key blank
+ in secrets.h cleanly disables the AI; the timetable still works.
+
+
+------------------------------------------------------------------------------------------
+7  BUILD, SIGN, INSTALL
+------------------------------------------------------------------------------------------
+
+ You need: the ARM GCC + MRE toolchain this repo uses, and your own secrets.h.
+
+   1. Create your secrets file:
+        copy src\secrets.example.h to src\secrets.h
+        put your personal iCal URL in UPV_ICAL_URL
+        (optional) put a DeepSeek / OpenAI-compatible key in OPENAI_API_KEY
+      secrets.h is gitignored and must never be shared.
+
+   2. Build:
+        cd apps\upv
+        set PATH=<toolchain>\arm-gcc\bin;<toolchain>\w64devkit\bin;%PATH%
+        make PYTHON=<python> APP_FILE_NAME=UPV
+
+   3. Sign with YOUR SIM's IMSI (S30+ only runs a .vxp signed for the inserted SIM):
+        python -I tools\vxpsign.py sign UPV.vxp <YOUR_IMSI> UPV_signed.vxp
+
+   4. Copy UPV_signed.vxp to the phone's memory card under \Apps\ (USB mass-storage
+      mode), then on the phone: File manager -> Memory card -> Apps -> UPV.vxp
+
+ Test the parser on a PC without the phone:
+   gcc -O1 -w -I src -o host_ical tools/host_ical.c src/upv_ical.c
+   host_ical  your_feed.ics  2026 11 5     (prints that day's classes)
+
+
+------------------------------------------------------------------------------------------
+8  FILES
+------------------------------------------------------------------------------------------
+
+ src/upv.c .............. the app: UI, keypad, streaming download, SD cache, AI call.
+ src/upv_ical.c / .h .... the streaming iCal parser + UTC->Madrid time conversion.
+                          Pure C, no phone calls, so it also compiles on a PC.
+ src/secrets.example.h .. template for secrets.h (your iCal URL + optional AI key).
+ src/ (the rest) ........ BearSSL (TLS), libco (coroutines), threading, certificates,
+                          C runtime glue - shared with the other apps in this repo.
+ tools/host_ical.c ...... PC test harness for the parser.
+ research/FINDINGS.md ... how the timetable mechanism was found (the OAuth dead end
+                          and the iCal feed that replaced it).
+ research/ical.py ....... a tiny Python reference client (reads your URL from a local
+                          ical_url.txt, which is never committed).
+ manifest.json .......... app name, vendor, RAM request.
+ Makefile ............... build rules.
+
+
+------------------------------------------------------------------------------------------
+9  PRIVACY
+------------------------------------------------------------------------------------------
+
+ - Your iCal URL (its token), your API key, and your IMSI are personal. They live only
+   in your local secrets.h and in the signed .vxp on your own SD card. None of them is
+   in this repository; secrets.h and *.vxp are gitignored.
+ - The timetable feed contains your name and your schedule: treat the .ics file and
+   your iCal URL as private.
+ - This is a personal-interoperability project: your own account, your own data.
