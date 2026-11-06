@@ -223,13 +223,3 @@
  Makefile ............... build rules.
 
 
-------------------------------------------------------------------------------------------
-9  PRIVACY
-------------------------------------------------------------------------------------------
-
- - Your iCal URL (its token), your API key, and your IMSI are personal. They live only
-   in your local secrets.h and in the signed .vxp on your own SD card. None of them is
-   in this repository; secrets.h and *.vxp are gitignored.
- - The timetable feed contains your name and your schedule: treat the .ics file and
-   your iCal URL as private.
- - This is a personal-interoperability project: your own account, your own data.
