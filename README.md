@@ -217,6 +217,8 @@ decompiled copy of the app.
 
 ## 8. Horario UPV: my class timetable, with AI
 
+<p align="center"><img src="docs/upv-mockup.png" width="480" alt="Horario UPV on the Nokia 216: day view and the AI summary (mock-up with sample classes)"></p>
+
 Same idea as VivaGym, one step further: see my **UPV university class timetable** on the
 phone. The official app (miUPV) is a Flutter app whose login uses OAuth2 client credentials
 the app fetches from the server at runtime — a dead end for a standalone client
